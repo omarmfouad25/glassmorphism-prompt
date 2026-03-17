@@ -1,349 +1,122 @@
-# The Liquid Glass UI Prompt
+# Why Each Rule Works
 
-A standalone, annotated prompt that encodes all six design dimensions of the liquid-glass-ui system. Drop this into Claude (or any capable AI assistant) with your project brief to reproduce premium glassmorphism results.
-
----
-
-## How to Use
-
-1. Fill in the **Parameters** table below with your project details
-2. Copy everything inside the `--- START PROMPT ---` / `--- END PROMPT ---` markers
-3. Paste it into a new conversation, followed by your specific brief
-4. The AI will build your hero section using the exact techniques in this repo
-
-Works with: Claude, GPT-4o, Gemini, or any LLM with strong coding ability.
+The copy-ready prompt is in the [README](./README.md). This document explains *why* each rule is specified the way it is — so you can make informed adjustments for your project, and so the AI produces better output when it understands the reasoning behind each constraint.
 
 ---
 
-## Parameters (fill in before sending)
+## Rule 1 — The 3-Tier Glass System
 
-| Parameter | Your Value | Default if left blank |
-|-----------|------------|----------------------|
-| `BRAND_NAME` | | "Brand" |
-| `HERO_HEADING` | | "Build something beautiful" |
-| `HEADING_ACCENT_WORDS` | Which word(s) get serif italic | First noun phrase |
-| `TAGLINE` | Short line below h1 | "The future, beautifully made." |
-| `CTA_LABEL` | Button text | "Get Started" |
-| `TAG_PILLS` | 2–4 short labels | Design, Motion, Code |
-| `BACKGROUND_URL` | Video (.mp4) or image URL | `bg-neutral-900` fallback |
-| `BOTTOM_QUOTE` | Pull quote + attribution (optional) | Omit |
-| `RIGHT_PANEL_CARDS` | Array of cards: title, description | 2–3 generic feature cards |
+**Why three named tiers instead of free values?**
 
----
+When blur and opacity values are chosen freely, the eye can't distinguish foreground from background. Three fixed tiers — 60px / 30px / 16px — create reliable visual distance. The gap between panel and card feels like depth. Without named tiers, generated output tends to cluster at 20–30px and flatten out.
 
---- START PROMPT ---
+**Why these exact values?**
 
-You are building a premium glassmorphism hero section. Follow this system exactly — do not simplify or deviate from the specified values. Every value was chosen deliberately.
+- 60px on a full-panel overlay is enough to separate the content layer from the video without destroying the background entirely. Below ~40px, text becomes hard to read over dynamic backgrounds.
+- 30px on cards inside panels creates secondary depth — they read as objects resting *on* the panel.
+- 16px on pills and buttons is just enough to catch the blur effect on the glass edge without blurring behind the pill text.
 
-## Stack
+**Why `saturate(180%)`?**
 
-- Next.js 14+ (App Router)
-- Tailwind CSS 3+
-- Three.js + @react-three/fiber + @react-three/drei (for video background)
-- Poppins + Source Serif 4 (via next/font/google)
-- lucide-react for icons
-
-Before writing files, confirm Three.js is installed. If not:
-```bash
-npm install three @react-three/fiber @react-three/drei
-npm install -D @types/three
-```
+The saturation boost prevents the background colors from washing out behind the dark overlay. Without it, blurred glass panels tend to look grey and muddy instead of deep and rich.
 
 ---
 
-## Rule 1 — The 3-Tier Glass System (CSS)
+## Rule 2 — The XOR Border Trick
 
-Inject this block under `@layer components` in globals.css. Do not alter any values.
+**Why not `border: 1px solid rgba(255,255,255,0.2)`?**
 
-```css
-@layer components {
+A uniform border is flat — the same intensity on all four sides. Physical glass doesn't behave this way. Light hits the top-left edge and wraps around, fading toward the bottom-right. The XOR mask technique creates a border from a gradient, which matches that physical behavior.
 
-  .glass-panel, .glass-card, .glass-pill {
-    position: relative;
-    overflow: hidden;
-  }
+**How the mask works:**
 
-  .glass-panel::before,
-  .glass-card::before,
-  .glass-pill::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    padding: 1px;
-    border-radius: inherit;
-    pointer-events: none;
-    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-    -webkit-mask-composite: xor;
-    mask-composite: exclude;
-  }
+The `::before` element covers the full element. Setting `padding: 1px` means the *content box* is 1px smaller than the *border box*. The XOR mask says: *show where the two mask layers do NOT overlap* — which is precisely the 1px padding strip. Result: a gradient rendered only along the border edge, with zero `border` properties involved.
 
-  /* PANEL — heavy (page overlays, feature sections) */
-  .glass-panel {
-    background: rgba(0,0,0,0.35);
-    backdrop-filter: blur(60px) saturate(180%);
-    -webkit-backdrop-filter: blur(60px) saturate(180%);
-    box-shadow: 0 8px 40px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.2);
-  }
-  .glass-panel::before {
-    background: linear-gradient(160deg,
-      rgba(255,255,255,0.5)  0%,
-      rgba(255,255,255,0.15) 30%,
-      transparent            55%,
-      rgba(255,255,255,0.08) 100%
-    );
-  }
-
-  /* CARD — medium (nested inside panels) */
-  .glass-card {
-    background: rgba(0,0,0,0.28);
-    backdrop-filter: blur(30px) saturate(160%);
-    -webkit-backdrop-filter: blur(30px) saturate(160%);
-    box-shadow: 0 4px 20px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.16);
-  }
-  .glass-card::before {
-    background: linear-gradient(145deg,
-      rgba(255,255,255,0.38) 0%,
-      rgba(255,255,255,0.1)  35%,
-      transparent            60%,
-      rgba(255,255,255,0.06) 100%
-    );
-  }
-
-  /* PILL — light (buttons, tags, nav items) */
-  .glass-pill {
-    background: rgba(0,0,0,0.22);
-    backdrop-filter: blur(16px) saturate(150%);
-    -webkit-backdrop-filter: blur(16px) saturate(150%);
-    box-shadow: inset 0 1px 0 rgba(255,255,255,0.18);
-  }
-  .glass-pill::before {
-    background: linear-gradient(135deg,
-      rgba(255,255,255,0.4)  0%,
-      rgba(255,255,255,0.08) 40%,
-      transparent            70%
-    );
-  }
-
-}
+```
+Full box:     ████████████
+Content box:  ██░░░░░░░░██   (1px inset)
+XOR result:   ░░░░░░░░░░░░   (only the strip)
+              ↑↑↑↑↑↑↑↑↑↑↑↑  gradient rendered here
 ```
 
-**Why this exact structure:**
-The `::before` pseudo-element + `padding: 1px` + `mask-composite: exclude` creates a gradient border without using the `border` property. The XOR operation reveals only the 1px padding strip, not the content box. This produces a physically accurate light-from-top-left shimmer that a flat `border` cannot achieve.
-
-Never invent new glass values. Pick one of the three tiers. The visual contrast between tiers is what creates perceived depth.
+The gradient angle (160deg) points from top-left to bottom-right, mimicking a light source in the top-left corner. This is the single most impactful technique in the system — it's what makes the panels read as physical glass objects rather than CSS rectangles.
 
 ---
 
-## Rule 2 — Video Background (Two-File Pattern)
+## Rule 3 — The Grayscale Constraint
 
-**Why two files:** `@react-three/fiber` uses browser APIs (canvas, WebGL, requestAnimationFrame) that crash during SSR. The `dynamic(..., { ssr: false })` wrapper is non-negotiable in Next.js App Router.
+**Why no brand colors?**
 
-### components/GlassScene.tsx
-```tsx
-'use client'
+Real glass has no pigment. It transmits and reflects. When you add a tinted background to a glass panel, it looks like a frosted piece of colored plastic — not glass.
 
-import { useRef } from 'react'
-import { Canvas, useFrame, useThree } from '@react-three/fiber'
-import { useVideoTexture } from '@react-three/drei'
-import * as THREE from 'three'
+The constraint forces a behavioral shift: the background video becomes the only source of color on the page. The glass panels become windows. Every hue the viewer perceives in the UI is actually the background showing through at different opacities. This is the constraint that makes the design feel premium rather than decorative.
 
-function VideoPlane({ url }: { url: string }) {
-  const texture = useVideoTexture(url, { loop: true, muted: true, start: true })
-  const meshRef = useRef<THREE.Mesh>(null)
-  const { viewport } = useThree()
+**Why these specific opacity steps?**
 
-  // object-cover math: fill viewport while preserving 16:9 aspect ratio
-  const videoAspect = 16 / 9
-  const viewportAspect = viewport.width / viewport.height
-  const scaleX = viewportAspect > videoAspect
-    ? viewport.width
-    : viewport.height * videoAspect
-  const scaleY = viewportAspect > videoAspect
-    ? viewport.width / videoAspect
-    : viewport.height
+The four text opacities (100 / 80 / 60 / 50) are spaced to create readable hierarchy with enough contrast at each level. Below 50%, text loses legibility on blurred backgrounds. The three background opacities (15 / 10 for fills, 30 for dividers) are chosen so they're visible but don't compete with text.
 
-  return (
-    <mesh ref={meshRef} scale={[scaleX, scaleY, 1]}>
-      <planeGeometry args={[1, 1]} />
-      <meshBasicMaterial map={texture} toneMapped={false} />
-    </mesh>
-  )
-}
-
-export default function GlassScene({ videoUrl }: { videoUrl: string }) {
-  return (
-    <Canvas
-      style={{ position: 'absolute', inset: 0, zIndex: 0 }}
-      camera={{ position: [0, 0, 1], fov: 50 }}
-    >
-      <VideoPlane url={videoUrl} />
-    </Canvas>
-  )
-}
-```
-
-### components/GlassSceneClient.tsx
-```tsx
-'use client'
-
-import dynamic from 'next/dynamic'
-
-const GlassScene = dynamic(() => import('./GlassScene'), { ssr: false })
-
-export default function GlassSceneClient({ videoUrl }: { videoUrl: string }) {
-  return <GlassScene videoUrl={videoUrl} />
-}
-```
+A rigid table prevents the "opacity drift" that happens when values are chosen freely — where 12 slightly different opacities create noise instead of hierarchy.
 
 ---
 
-## Rule 3 — Color Constraint (Strict Grayscale)
+## Rule 4 — Typography
 
-**Why:** When panels have color, they compete with the background. When they stay achromatic, they become windows — depth comes from the video, not the UI.
+**Why Poppins + Source Serif 4?**
 
-Never add brand colors, tinted backgrounds, or colored text to any glass element.
+Poppins is a geometric sans that reads cleanly at small sizes in UI contexts (labels, descriptions, nav). Source Serif 4 italic has texture and weight that contrasts with Poppins without clashing — it reads as intentional rather than decorative.
 
-```
-text-white          → primary headings
-text-white/80       → secondary text, card titles
-text-white/60       → descriptions, labels
-text-white/50       → muted, timestamps, captions
+**Why only 2–3 words of serif?**
 
-bg-white/15         → primary icon/button backgrounds
-bg-white/10         → secondary element backgrounds
-bg-white/30         → dividers and separators
+The serif creates a visual anchor — the place the eye goes first when scanning the page. That effect depends entirely on scarcity. Three serif words on a page reads as editorial precision. Twenty serif words reads as a magazine template.
 
-bg-neutral-900      → page background fallback — always set this
-```
+**Why `tracking-[-0.05em]` on H1?**
 
----
-
-## Rule 4 — Typography (Two Fonts, Two Roles)
-
-**Why:** Source Serif 4 italic is powerful because it appears rarely — two or three words maximum on the entire page. Overuse destroys the effect.
-
-```tsx
-// layout.tsx
-import { Poppins, Source_Serif_4 } from 'next/font/google'
-
-const poppins = Poppins({
-  variable: '--font-poppins',
-  subsets: ['latin'],
-  weight: ['400', '500', '600'],
-})
-
-const sourceSerif4 = Source_Serif_4({
-  variable: '--font-source-serif',
-  subsets: ['latin'],
-  style: ['normal', 'italic'],
-  weight: ['400', '600'],
-})
-```
-
-- Poppins → everything: headings, UI, labels, descriptions
-- Source Serif 4 italic → accent words in `<h1>` only + the pull quote footer
-- `<em style={{ fontFamily: 'var(--font-source-serif)', fontStyle: 'italic' }}>word</em>`
-
-Type scale (exact values):
-```
-H1:           text-6xl lg:text-7xl font-medium tracking-[-0.05em]
-Card titles:  text-sm font-medium
-Labels:       text-xs uppercase tracking-widest
-Descriptions: text-xs leading-relaxed
-```
+At 6xl–7xl, default letter spacing looks loose. The negative tracking tightens the heading into a single visual unit and makes large type look intentional rather than simply enlarged.
 
 ---
 
 ## Rule 5 — Layout Architecture
 
-```tsx
-<main className="relative min-h-screen overflow-hidden bg-neutral-900"
-  style={{ fontFamily: 'var(--font-poppins)' }}>
+**Why glass-panel as a separate absolute div with `pointer-events-none`?**
 
-  {/* z-index 0: full-screen video background */}
-  <GlassSceneClient videoUrl={VIDEO_URL} />
+If the glass effect is applied to the layout container itself, nesting and overflow interactions become complex to manage. Separating the glass overlay (absolute, pointer-events-none) from the content container (relative, normal flow) means:
 
-  {/* z-index 10: two-panel layout */}
-  <div className="relative z-10 flex min-h-screen">
+- The glass renders correctly at `inset-4` without clipping content
+- Content layout is unaffected by the backdrop-filter
+- Adding `rounded-3xl` to the overlay doesn't affect the content's border-radius
 
-    {/* LEFT PANEL — full height, glass overlay */}
-    <div className="relative w-full lg:w-[52%] flex flex-col min-h-screen">
-      <div className="glass-panel absolute inset-4 lg:inset-6 rounded-3xl pointer-events-none" />
-      <div className="relative flex flex-col min-h-screen px-10 py-8">
-        <nav>...</nav>
-        <div className="flex-1 flex flex-col items-start justify-center gap-6">
-          {/* tag pills, h1, tagline, CTA */}
-        </div>
-        <footer>...</footer>
-      </div>
-    </div>
+**Why `inset-4` instead of `inset-0`?**
 
-    {/* RIGHT PANEL — desktop only */}
-    <div className="hidden lg:flex w-[48%] flex-col p-6 gap-4">
-      {/* top bar (glass-pill), community card (glass-card) */}
-      <div className="mt-auto">
-        <div className="glass-panel rounded-[2.5rem] p-6">
-          <div className="grid grid-cols-2 gap-3">
-            {/* feature cards (glass-card) */}
-          </div>
-        </div>
-      </div>
-    </div>
-
-  </div>
-</main>
-```
-
-**Critical:** The glass-panel `div` gets `pointer-events-none` — it sits as a visual overlay above the content layer. The content `div` sits on top via `relative` positioning.
+A small inset (16px) means the glass panel floats slightly away from the viewport edges. This creates visible separation between the panel and the edge, which helps the eye perceive it as an object in space rather than a flat background.
 
 ---
 
-## Rule 6 — Micro-interactions (No Exceptions)
+## Rule 6 — Micro-interactions
 
-**Why:** `active:scale-95` is as important as `hover:scale-105` — it provides tactile feedback on click. Without it the interaction feels half-finished.
+**Why `scale-105` and not a larger value like `scale-110`?**
 
-Apply to **every** interactive element. Not optional.
+At 1.05, the hover feels responsive — like the element is acknowledging your cursor. At 1.10, it starts to feel exaggerated and toy-like. The subtle scale is what reads as premium; obvious scale reads as novelty.
 
-| Element | Classes |
-|---------|---------|
-| Buttons, cards, pills | `transition-transform hover:scale-105 active:scale-95 cursor-pointer` |
-| Text links, social icons | `transition-colors hover:text-white/80` (not scale) |
-| Icon containers | `rounded-full bg-white/15 flex items-center justify-center` |
+**Why `active:scale-95`?**
 
----
+This is the tactile feedback. When you press a physical button, it moves *toward* you (compresses). `active:scale-95` replicates that compression feedback on release. Without it, clicks feel unconfirmed — the UI doesn't acknowledge that anything happened. Including it is the difference between "nice-looking UI" and "designed interaction."
 
-## Verification Checklist
+**Why `transition-colors` on links instead of scale?**
 
-Before finishing, confirm:
-
-- [ ] Video loads and fills viewport (object-cover behavior verified)
-- [ ] All three glass tiers are visually distinct — blur depth is visible
-- [ ] Zero color in the UI — everything is white + opacity
-- [ ] Hover/active scales work on every interactive element
-- [ ] Right panel is hidden on mobile (`hidden lg:flex`)
-- [ ] `::before` shimmer visible: top-left lighter than bottom-right
-- [ ] `npx tsc --noEmit` exits with zero errors
+Text links and icons that scale on hover create visual instability — the surrounding text reflows slightly. Color transitions communicate interactivity without disrupting layout.
 
 ---
 
-## My Brief
+## Making Adjustments
 
-[Paste your brief here after the prompt, including BRAND_NAME, HERO_HEADING, BACKGROUND_URL, and any other parameters from the table above.]
+If you need to adapt the system for a different context:
 
---- END PROMPT ---
+**Changing blur values:** Keep the ratio — if you reduce the panel blur, reduce card and pill proportionally. The depth hierarchy depends on the gaps between tiers, not the absolute values.
 
----
+**Adding a third font:** Don't. The power of the serif accent depends on contrast with Poppins. Adding a third typeface reduces both.
 
-## Why Each Dimension Matters
+**Adding color to one panel:** Acceptable if the panel represents a different object (e.g., a notification or alert). Keep it subtle (`bg-blue-900/30`) and treat it as an exception, not a pattern.
 
-**Glass tiers** — Three named levels mean every element has an unambiguous depth. When everything is the same blur, nothing reads as foreground or background. Tier contrast is what creates hierarchy.
+**No video background:** The system works over static images. Replace `GlassSceneClient` with a `<Image>` component in a fixed-position container. The glass tiers and color constraint still apply.
 
-**The XOR border** — A plain `border: 1px solid rgba(255,255,255,0.2)` is uniform. The gradient border mimics how light wraps a physical glass edge — brighter where the light source hits, fading where it doesn't. This single technique accounts for roughly half of the perceived premium quality.
-
-**Grayscale constraint** — Every color your eye sees in the glass panels is actually a reflection of the video behind them. This is exactly how real glass behaves. Violating this by tinting panels makes them feel like opaque rectangles, not glass.
-
-**Serif scarcity** — The Source Serif 4 italic has impact because it appears 2–3 times on the entire page. Use it for 10 words and it becomes decoration. Use it for 2 and it becomes the thing your eye goes to first.
-
-**Opacity ladder** — Four text opacities, three background opacities. The table is rigid. Without it, designers "eyeball" values and end up with 7–10 slightly different opacities that produce visual noise instead of hierarchy.
-
-**Scale micro-interactions** — `scale-105/95` at 150ms feels physical. It's the digital equivalent of a button that depresses when pressed. Most glassmorphism UIs are purely visual — adding the tactile layer elevates the experience category from "pretty design" to "designed product."
+**Mobile layout:** The right panel (`hidden lg:flex`) can be converted to a stacked section below the hero on mobile. Apply the same glass tiers — just use `glass-card` instead of the `glass-panel` outer container since mobile screens have less depth to spare.
